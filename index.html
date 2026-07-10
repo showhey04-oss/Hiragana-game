@@ -4,14 +4,8 @@
   <meta charset="UTF-8" />
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
   />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="ひらがなゲーム" />
-  <meta name="theme-color" content="#fff8e8" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icon-180.png" />
   <title>ひらがなゲーム</title>
   <style>
     :root {
@@ -1027,6 +1021,49 @@
       }
     }
 
+    let preferredJapaneseVoice = null;
+
+    function selectJapaneseVoice() {
+      const voices = window.speechSynthesis.getVoices();
+
+      const japaneseVoices = voices.filter((voice) =>
+        voice.lang && voice.lang.toLowerCase().startsWith("ja")
+      );
+
+      if (japaneseVoices.length === 0) {
+        preferredJapaneseVoice = null;
+        return;
+      }
+
+      const preferredNames = [
+        "siri",
+        "kyoko",
+        "otoya",
+        "hattori",
+        "nanami",
+        "enhanced",
+        "premium"
+      ];
+
+      preferredJapaneseVoice =
+        japaneseVoices.find((voice) =>
+          preferredNames.some((name) =>
+            voice.name.toLowerCase().includes(name)
+          )
+        ) ||
+        japaneseVoices.find((voice) => voice.localService) ||
+        japaneseVoices[0];
+    }
+
+    selectJapaneseVoice();
+
+    if ("onvoiceschanged" in window.speechSynthesis) {
+      window.speechSynthesis.addEventListener(
+        "voiceschanged",
+        selectJapaneseVoice
+      );
+    }
+
     function speakText(text) {
       if (!("speechSynthesis" in window)) {
         return;
@@ -1036,8 +1073,14 @@
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "ja-JP";
-      utterance.rate = 0.72;
-      utterance.pitch = 1.12;
+
+      if (preferredJapaneseVoice) {
+        utterance.voice = preferredJapaneseVoice;
+      }
+
+      utterance.rate = 0.88;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
 
       window.speechSynthesis.speak(utterance);
     }
@@ -1056,14 +1099,6 @@
       }
 
       return copied;
-    }
-  </script>
-
-  <script>
-    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-      });
     }
   </script>
 </body>
