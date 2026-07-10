@@ -360,6 +360,69 @@
       line-height: 1.6;
     }
 
+    .celebration-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 9999;
+    }
+
+    .celebration-star {
+      position: absolute;
+      left: 50%;
+      top: 45%;
+      font-size: 72px;
+      transform: translate(-50%, -50%) scale(0);
+      animation: star-pop 0.75s ease-out forwards;
+      filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.18));
+    }
+
+    .confetti-piece {
+      position: absolute;
+      left: 50%;
+      top: 45%;
+      width: 12px;
+      height: 18px;
+      border-radius: 3px;
+      opacity: 0;
+      transform: translate(-50%, -50%) rotate(0deg);
+      animation: confetti-burst 0.9s ease-out forwards;
+    }
+
+    @keyframes star-pop {
+      0% {
+        transform: translate(-50%, -50%) scale(0) rotate(-15deg);
+        opacity: 0;
+      }
+      45% {
+        transform: translate(-50%, -50%) scale(1.25) rotate(8deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(0.85) rotate(0deg);
+        opacity: 0;
+      }
+    }
+
+    @keyframes confetti-burst {
+      0% {
+        opacity: 1;
+        transform:
+          translate(-50%, -50%)
+          rotate(0deg)
+          translate(0, 0);
+      }
+      100% {
+        opacity: 0;
+        transform:
+          translate(-50%, -50%)
+          rotate(var(--rotation))
+          translate(var(--x), var(--y));
+      }
+    }
+
+
     @keyframes bounce {
       0% { transform: scale(1); }
       50% { transform: scale(1.14); }
@@ -393,6 +456,8 @@
   </style>
 </head>
 <body>
+  <div id="celebrationLayer" class="celebration-layer" aria-hidden="true"></div>
+
   <main class="app">
     <section id="menuScreen">
       <h1 class="title">ひらがなゲーム</h1>
@@ -610,6 +675,7 @@
     const menuButton = document.getElementById("menuButton");
     const retryButton = document.getElementById("retryButton");
     const resultMenuButton = document.getElementById("resultMenuButton");
+    const celebrationLayer = document.getElementById("celebrationLayer");
 
     totalQuestionsElement.textContent = totalQuestions;
 
@@ -752,18 +818,14 @@
         button.classList.add("correct");
         messageElement.textContent = "せいかい！ すごい！";
 
-        const praise =
-          currentQuestionType === "sound"
-            ? `せいかい。${correctAnswer} だよ。`
-            : `せいかい。${currentWord} の さいしょは ${correctAnswer} だよ。`;
-
-        speakText(praise);
+        playCorrectSound();
+        showCelebration();
         disableChoices();
         nextButton.style.display = "inline-block";
       } else {
         button.classList.add("wrong");
         messageElement.textContent = "もういちど やってみよう";
-        speakText("もういちど");
+        playWrongSound();
 
         setTimeout(() => {
           button.classList.remove("wrong");
@@ -803,7 +865,8 @@
           "よく がんばりました。もういちど やってみよう！";
       }
 
-      speakText(`よくできました。${score}もん せいかいです。`);
+      playFinishSound();
+      showCelebration(true);
     }
 
     function showMenu() {
@@ -811,6 +874,138 @@
       gameScreen.style.display = "none";
       resultScreen.style.display = "none";
       menuScreen.style.display = "block";
+    }
+
+    let audioContext;
+
+    function getAudioContext() {
+      if (!audioContext) {
+        const AudioContextClass =
+          window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioContextClass) {
+          return null;
+        }
+
+        audioContext = new AudioContextClass();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      return audioContext;
+    }
+
+    function playTone(frequency, startTime, duration, volume = 0.12, type = "sine") {
+      const context = getAudioContext();
+
+      if (!context) {
+        return;
+      }
+
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        startTime + duration
+      );
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration + 0.03);
+    }
+
+    function playCorrectSound() {
+      const context = getAudioContext();
+
+      if (!context) {
+        return;
+      }
+
+      const now = context.currentTime;
+      playTone(523.25, now, 0.16, 0.11, "sine");
+      playTone(659.25, now + 0.11, 0.16, 0.11, "sine");
+      playTone(783.99, now + 0.22, 0.24, 0.13, "sine");
+    }
+
+    function playWrongSound() {
+      const context = getAudioContext();
+
+      if (!context) {
+        return;
+      }
+
+      const now = context.currentTime;
+      playTone(220, now, 0.16, 0.07, "triangle");
+      playTone(174.61, now + 0.11, 0.22, 0.06, "triangle");
+    }
+
+    function playFinishSound() {
+      const context = getAudioContext();
+
+      if (!context) {
+        return;
+      }
+
+      const now = context.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+
+      notes.forEach((note, index) => {
+        playTone(note, now + index * 0.12, 0.24, 0.10, "sine");
+      });
+    }
+
+    function showCelebration(isLarge = false) {
+      celebrationLayer.innerHTML = "";
+
+      const star = document.createElement("div");
+      star.className = "celebration-star";
+      star.textContent = isLarge ? "🏆" : "⭐";
+      celebrationLayer.appendChild(star);
+
+      const colors = [
+        "#ff6b6b",
+        "#ffd93d",
+        "#6bcb77",
+        "#4d96ff",
+        "#c77dff",
+        "#ff9f1c"
+      ];
+
+      const pieceCount = isLarge ? 28 : 18;
+
+      for (let i = 0; i < pieceCount; i++) {
+        const piece = document.createElement("div");
+        const angle = (Math.PI * 2 * i) / pieceCount;
+        const distance = (isLarge ? 190 : 135) + Math.random() * 45;
+        const x = Math.cos(angle) * distance;
+        const y = Math.sin(angle) * distance;
+
+        piece.className = "confetti-piece";
+        piece.style.background = colors[i % colors.length];
+        piece.style.setProperty("--x", `${x}px`);
+        piece.style.setProperty("--y", `${y}px`);
+        piece.style.setProperty(
+          "--rotation",
+          `${180 + Math.random() * 540}deg`
+        );
+        piece.style.animationDelay = `${Math.random() * 0.08}s`;
+
+        celebrationLayer.appendChild(piece);
+      }
+
+      setTimeout(() => {
+        celebrationLayer.innerHTML = "";
+      }, 1100);
     }
 
     function speakCurrentQuestion() {
