@@ -1064,47 +1064,15 @@
       );
     }
 
-    function splitWordForLearning(word) {
-      const units = [];
-
-      for (const character of word) {
-        if (
-          character === "ー" ||
-          character === "ゃ" ||
-          character === "ゅ" ||
-          character === "ょ" ||
-          character === "ぁ" ||
-          character === "ぃ" ||
-          character === "ぅ" ||
-          character === "ぇ" ||
-          character === "ぉ" ||
-          character === "っ"
-        ) {
-          if (units.length > 0) {
-            units[units.length - 1] += character;
-          } else {
-            units.push(character);
-          }
-        } else {
-          units.push(character);
-        }
-      }
-
-      return units;
-    }
-
     function speakLearningSound(character) {
-      speakText(`${character}。${character}。`, 0.62);
+      speakText(`${character}……${character}。`, 0.52);
     }
 
     function speakLearningWord(word) {
-      const units = splitWordForLearning(word);
-      const segmented = units.join("、");
-
-      speakText(`${word}。${segmented}。`, 0.66);
+      speakText(`${word}……${word}。`, 0.54);
     }
 
-    function speakText(text, rate = 0.68) {
+    function speakText(text, rate = 0.54) {
       if (!("speechSynthesis" in window)) {
         return;
       }
