@@ -1,4 +1,4 @@
-const CACHE_NAME = "hiragana-game-v2";
+const CACHE_NAME = "hiragana-game-v3";
 const FILES = [
   "./",
   "./index.html",
